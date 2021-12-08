@@ -22,7 +22,7 @@ else()
     # things only work with them set
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup -dynamiclib")
     set(CMAKE_SHARED_LINKER_FLAGS "-bundle -flat_namespace -undefined suppress")
-    set_target_properties(ncnn.so PROPERTIES INSTALL_RPATH "@loader_path/lib")
+    set_target_properties(elixir_ncnn.so PROPERTIES INSTALL_RPATH "@loader_path/lib")
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -I${ERTS_INCLUDE_DIR} -O3 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers")
