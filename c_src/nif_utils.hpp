@@ -315,7 +315,6 @@ namespace erlang
                             std::string ckey;
                             if (get_atom(env, arr[0], ckey)) {
                                 copts[ckey] = arr[1];
-                                printf("get key: %s\n", ckey.c_str());
                             }
                         }
                     }
