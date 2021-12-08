@@ -18,7 +18,13 @@ defmodule ElixirNcnn.MixProject do
         "NCNN_VERSION" => @ncnn_version,
         "MAKE_BUILD_FLAGS" => System.get_env("MAKE_BUILD_FLAGS", "-j#{System.schedulers_online()}"),
         "USE_NCNN_TOOLCHAIN" => System.get_env("USE_NCNN_TOOLCHAIN", "YES")
-      }
+      },
+      xref: [
+        exclude: [
+          OpenCV,
+          OpenCV.Mat
+        ]
+      ]
     ]
   end
 
