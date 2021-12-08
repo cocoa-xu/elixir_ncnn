@@ -17,25 +17,26 @@ defmodule Ncnn.MobileNetV3SsdLite do
     Ncnn.Net.forward(self, bin_data, cols, rows)
   end
 
-  def visualise_pred([{label_index, prob, {{x, y}, {w, h}}}|rest], mat, cols) do
-    if prob > 0.5 do
-      {:ok, mat} = OpenCV.rectangle(mat, [x, y, w, h], [255, 0, 0])
-      label_text = Enum.at(labels(), label_index) <> ": #{Float.round(prob, 2)}"
-      {:ok, {{label_height, label_weight}, baseline}} = OpenCV.gettextsize(label_text, OpenCV.cv_font_hershey_simplex, 0.5, 1)
-      y = y - label_height - baseline
-      if y < 0, do: y = 0
-      if x + label_weight > cols, do: x = cols - label_weight
-      {:ok, mat} = OpenCV.rectangle(mat, [x, y, label_weight, label_height + baseline], [255, 255, 255])
-      {:ok, mat} = OpenCV.puttext(mat, label_text, [0, 0], OpenCV.cv_font_hershey_simplex, 0.5, [0, 0, 0])
-      visualise_pred(rest, mat, cols)
+  def translate_pred([{label_index, prob, {{x, y}, {w, h}}}|rest], mat, cols, threshold) do
+    if prob > threshold do
+#      {:ok, mat} = OpenCV.rectangle(mat, [x, y, w, h], [255, 0, 0])
+      IO.puts Enum.at(labels(), label_index) <> ": #{Float.round(prob, 2)}"
+      # todo: OpenCV.gettextsize seems always return an invaild value
+#      {:ok, {{label_height, label_weight}, baseline}} = OpenCV.gettextsize(label_text, OpenCV.cv_font_hershey_simplex, 0.5, 1)
+#      y = y - label_height - baseline
+#      if y < 0, do: y = 0
+#      if x + label_weight > cols, do: x = cols - label_weight
+#      {:ok, mat} = OpenCV.rectangle(mat, [x, y], [x + label_weight, y + label_height + baseline], [255, 255, 255])
+#      {:ok, mat} = OpenCV.puttext(mat, label_text, [0, 0], OpenCV.cv_font_hershey_simplex, 0.5, [0, 0, 0])
+      translate_pred(rest, mat, cols, threshold)
     else
-      visualise_pred(rest, mat, cols)
+      translate_pred(rest, mat, cols, threshold)
     end
   end
-  def visualise_pred([], mat, _), do: mat
+  def translate_pred([], mat, _), do: mat
 
-  def visualise_pred(source_mat, pred) do
+  def translate_pred(source_mat, pred, threshold \\ 0.5) do
     {:ok, {_, cols, _}} = OpenCV.Mat.shape(source_mat)
-    visualise_pred(pred, source_mat, cols)
+    visualise_pred(pred, source_mat, cols, threshold)
   end
 end
