@@ -16,17 +16,30 @@ end
 
 Then download `.param` file and model file `.bin` from [here](https://github.com/nihui/ncnn-assets/tree/master/models).
 
-- [mobilenetv3_ssdlite_voc.bin](https://github.com/nihui/ncnn-assets/blob/master/models/mobilenetv3_ssdlite_voc.bin)
-- [mobilenetv3_ssdlite_voc.param](https://github.com/nihui/ncnn-assets/blob/master/models/mobilenetv3_ssdlite_voc.param)
+## Supported Models
+- MobileNetSSD
+- MobileNetSSDLite V2
+- MobileNetSSDLite V3
 
 Test code,
 ```elixir
-{:ok, mobilenetv3} = Ncnn.MobileNetV3SsdLite.load(
-  "/path/to/mobilenetv3_ssdlite_voc.param", 
-  "/path/to/mobilenetv3_ssdlite_voc.bin"
-)
-{:ok, mat, pred} = Ncnn.MobileNetV3SsdLite.predict(mobilenetv3, "/path/to/img.jpg") ; 0
-Ncnn.MobileNetV3SsdLite.translate_pred(mat, pred)
+# you can load an image by whatever way you prefer
+# but `image_data` has to be bgr888 format at the moment
+# below shows how to do this with evision
+## read an image from file
+{:ok, mat} = OpenCV.imread(image_path)
+## get shapes
+{:ok, {rows, cols, _}} = OpenCV.Mat.shape(mat)
+## convert to binary data
+{:ok, image_data} = OpenCV.Mat.to_binary(mat)
+
+# load MobileNetSSDLite V3
+{:ok, mobilenetv3} = Ncnn.Models.MobileNet.load(:v3)
+# predict
+{:ok, pred} = Ncnn.Models.MobileNet.predict(mobilenetv3, image_data, cols, rows) ; 0
+
+## this function uses evision at the moment
+Ncnn.Models.MobileNet.translate_pred(mat, pred)
 ```
 
 ## Installation
