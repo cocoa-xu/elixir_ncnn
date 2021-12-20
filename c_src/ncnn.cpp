@@ -6,6 +6,7 @@
 #include "ncnn/net.h"
 #include "ncnn/mat.h"
 #include "nif_utils.hpp"
+#include "helper.hpp"
 
 #ifdef __GNUC__
 #  pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -39,7 +40,7 @@
     {                                                                                               \
         erlang_res< STORAGE > * VAR;                                                                \
         VAR = (decltype(VAR))enif_alloc_resource(erlang_res< STORAGE >::type,                       \
-                                sizeof(erlang_res< STORAGE >));                               \
+                                sizeof(erlang_res< STORAGE >));                                     \
         if (!VAR)                                                                                   \
             return erlang::nif::error(env, "no memory");                                            \
         new (&(VAR->val)) STORAGE(r);                                                               \
@@ -65,7 +66,7 @@ catch (const std::exception &e)                      \
 catch (...)                                          \
 {                                                    \
     error_flag = true;                               \
-    error_term = erlang::nif::error(env,            \
+    error_term = erlang::nif::error(env,             \
           "Unknown C++ exception from OpenCV code"); \
 }
 
@@ -319,14 +320,6 @@ bool erlang_to(ErlNifEnv *env, ERL_NIF_TERM obj, std::string &value)
     return (ret > 0);
 }
 
-bool erlang_to_binary(ErlNifEnv *env, ERL_NIF_TERM obj, ErlNifBinary* bin) {
-    if (enif_term_to_binary(env, obj, bin)) {
-        return true;
-    }
-
-    return false;
-}
-
 // exception-safe erlang_to
 template<typename _Tp> static
 bool erlang_to_safe(ErlNifEnv *env, ERL_NIF_TERM obj, _Tp& value) {
@@ -346,20 +339,21 @@ static ERL_NIF_TERM net_new_net(ErlNifEnv *env, int argc, const ERL_NIF_TERM arg
 static ERL_NIF_TERM net_load_param(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     using namespace ncnn;
     ERL_NIF_TERM error_term = 0;
+    std::map<std::string, ERL_NIF_TERM> erl_terms;
+    int nif_opts_index = 0;
+    if (nif_opts_index < argc) {
+        erlang::nif::parse_arg(env, nif_opts_index, argv, erl_terms);
+    }
+
+    Net * net = nullptr;
+    std::string param_path;
 
     {
-        ERL_NIF_TERM erl_term_net = erlang::nif::atom(env, "nil");
-        Net * net;
-        ERL_NIF_TERM erl_term_param_path = erlang::nif::atom(env, "nil");
-        std::string param_path;
         int retval;
 
-        const char *keywords[] = {"net", "param_path", NULL};
-        if (0 < argc &&
-            erlang::nif::parse_arg(env, 0, argv, (char **) keywords, "OO:", &erl_term_net, &erl_term_param_path) &&
-                erlang_to_net(env, erl_term_net, net) &&
-            erlang_to_safe(env, erl_term_param_path, param_path)
-            ) {
+        if (erlang_to_net(env, erlang_get_kw(env, erl_terms, "net"), net) &&
+            erlang_to_safe(env, erlang_get_kw(env, erl_terms, "param_path"), param_path))
+        {
             int error_flag = false;
             ERRWRAP2(retval = net->load_param(param_path.c_str()), env, error_flag, error_term);
             if (!error_flag) {
@@ -375,19 +369,20 @@ static ERL_NIF_TERM net_load_param(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
 static ERL_NIF_TERM net_load_model(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
     using namespace ncnn;
     ERL_NIF_TERM error_term = 0;
+    std::map<std::string, ERL_NIF_TERM> erl_terms;
+    int nif_opts_index = 0;
+    if (nif_opts_index < argc) {
+        erlang::nif::parse_arg(env, nif_opts_index, argv, erl_terms);
+    }
+
+    Net * net = nullptr;
+    std::string model_path;
 
     {
-        ERL_NIF_TERM erl_term_net = erlang::nif::atom(env, "nil");
-        Net * net;
-        ERL_NIF_TERM erl_term_model_path = erlang::nif::atom(env, "nil");
-        std::string model_path;
         int retval;
 
-        const char *keywords[] = {"net", "model_path", NULL};
-        if (0 < argc &&
-            erlang::nif::parse_arg(env, 0, argv, (char **) keywords, "OO:", &erl_term_net, &erl_term_model_path) &&
-                erlang_to_net(env, erl_term_net, net) &&
-            erlang_to_safe(env, erl_term_model_path, model_path))
+        if (erlang_to_net(env, erlang_get_kw(env, erl_terms, "net"), net) &&
+            erlang_to_safe(env, erlang_get_kw(env, erl_terms, "model_path"), model_path))
         {
             int error_flag = false;
             ERRWRAP2(retval = net->load_model(model_path.c_str()), env, error_flag, error_term);
@@ -401,90 +396,7 @@ static ERL_NIF_TERM net_load_model(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     else return erlang::nif::atom(env, "nil");
 }
 
-template<class T>
-const T& clamp(const T& v, const T& lo, const T& hi)
-{
-    return v < lo ? lo : hi < v ? hi : v;
-}
-
-struct Object
-{
-    struct rect {
-        float x;
-        float y;
-        float width;
-        float height;
-    };
-    int label;
-    float prob;
-};
-
-static ERL_NIF_TERM net_forward(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
-    using namespace ncnn;
-    ERL_NIF_TERM error_term = 0;
-
-    {
-        ERL_NIF_TERM erl_term_net = erlang::nif::atom(env, "nil");
-        Net * net;
-        ERL_NIF_TERM erl_term_data = erlang::nif::atom(env, "nil");
-        ErlNifBinary data;
-        ERL_NIF_TERM erl_term_cols = erlang::nif::atom(env, "nil");
-        int img_cols = 0;
-        ERL_NIF_TERM erl_term_rows = erlang::nif::atom(env, "nil");
-        int img_rows = 0;
-        int retval;
-
-        const char *keywords[] = {"net", "data", "cols", "rows", NULL};
-        if (0 < argc &&
-            erlang::nif::parse_arg(env, 0, argv, (char **) keywords, "OOOO:",
-                                   &erl_term_net, &erl_term_data, &erl_term_cols, &erl_term_rows) &&
-            erlang_to_net(env, erl_term_net, net) &&
-                erlang_to_binary(env, erl_term_data, &data) &&
-                erlang_to_safe(env, erl_term_cols, img_cols) &&
-                erlang_to_safe(env, erl_term_rows, img_rows))
-        {
-            const int target_size = 300;
-
-            ncnn::Mat in = ncnn::Mat::from_pixels_resize((const unsigned char*)data.data, ncnn::Mat::PIXEL_BGR2RGB, img_cols, img_rows, target_size, target_size);
-
-            const float mean_vals[3] = {123.675f, 116.28f, 103.53f};
-            const float norm_vals[3] = {1.0f, 1.0f, 1.0f};
-            in.substract_mean_normalize(mean_vals, norm_vals);
-
-            ncnn::Extractor ex = net->create_extractor();
-
-            ex.input("input", in);
-            ncnn::Mat out;
-            ex.extract("detection_out", out);
-
-            ERL_NIF_TERM * detected = (ERL_NIF_TERM *)enif_alloc(sizeof(ERL_NIF_TERM) * out.h);
-            for (int i = 0; i < out.h; i++)
-            {
-                const float* values = out.row(i);
-
-                // filter out cross-boundary
-                float x1 = clamp(values[2] * target_size, 0.f, float(target_size - 1)) / target_size * img_cols;
-                float y1 = clamp(values[3] * target_size, 0.f, float(target_size - 1)) / target_size * img_rows;
-                float x2 = clamp(values[4] * target_size, 0.f, float(target_size - 1)) / target_size * img_cols;
-                float y2 = clamp(values[5] * target_size, 0.f, float(target_size - 1)) / target_size * img_rows;
-
-                ERL_NIF_TERM obj = enif_make_tuple3(env, erlang_from(env, (int)values[0]), erlang_from(env, values[1]),
-                    enif_make_tuple2(env,
-                        enif_make_tuple2(env, erlang_from(env, x1), erlang_from(env, y1)),
-                        enif_make_tuple2(env, erlang_from(env, x2-x1), erlang_from(env, y2-y1))
-                    )
-                );
-
-                detected[i] = obj;
-            }
-            enif_release_binary(&data);
-            return erlang::nif::ok(env, enif_make_list_from_array(env, detected, out.h));
-        }
-    }
-
-    if (error_term != 0) return error_term;
-    else return erlang::nif::atom(env, "nil");
-}
+#include "mobile_net_v3_ssdlite.hpp"
 
 ERL_TYPE_DECLARE(Net, std::shared_ptr<ncnn::Net>, shared_ptr);
 
@@ -507,14 +419,15 @@ static int on_upgrade(ErlNifEnv*, void**, void**, ERL_NIF_TERM)
     return 0;
 }
 
-#define F(NAME, ARITY)    \
-  {#NAME, ARITY, NAME, 0}
+#define F(NAME, ARITY) {#NAME, ARITY, NAME, 0}
 
 static ErlNifFunc nif_functions[] = {
     F(net_new_net, 0),
     F(net_load_model, 1),
     F(net_load_param, 1),
-    F(net_forward, 1)
+
+    // Models
+    F(mobile_net_v3_ssdlite_forward, 1)
 };
 
 ERL_NIF_INIT(ncnn_nif, nif_functions, on_load, on_reload, on_upgrade, NULL);
