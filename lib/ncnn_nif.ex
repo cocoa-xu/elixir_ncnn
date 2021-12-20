@@ -15,5 +15,8 @@ defmodule :ncnn_nif do
   def net_new_net, do: :erlang.nif_error(:not_loaded)
   def net_load_param(_opts \\ []), do: :erlang.nif_error(:not_loaded)
   def net_load_model(_opts \\ []), do: :erlang.nif_error(:not_loaded)
-  def net_forward(_opts \\ []), do: :erlang.nif_error(:not_loaded)
+
+  # Models
+  def mobile_net_forward(_opts \\ []), do: :erlang.nif_error(:not_loaded)
+  def mobile_net_v2_ssdlite_load(_opts \\ []), do: :erlang.nif_error(:not_loaded)
 end

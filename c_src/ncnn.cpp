@@ -70,20 +70,6 @@ catch (...)                                          \
           "Unknown C++ exception from OpenCV code"); \
 }
 
-template<typename R>
-struct erlang_res {
-    R val;
-    static ErlNifResourceType * type;
-};
-template<typename R> ErlNifResourceType * erlang_res<R>::type = nullptr;
-static ErlNifResourceType * ncnn_net_type = nullptr;
-
-template<typename R>
-int alloc_resource(erlang_res<R> **res) {
-    *res = (erlang_res<R> *)enif_alloc_resource(ncnn_net_type, sizeof(erlang_res<R>));
-    return (*res != nullptr);
-}
-
 #define HAS_CONVERSION_ERROR(x) (((x) == -1))
 
 // convert erlang term *from* T
@@ -96,34 +82,6 @@ ERL_NIF_TERM erlang_from(ErlNifEnv *env, const T& obj) {
 template<typename T> static
 bool erlang_to(ErlNifEnv *env, ERL_NIF_TERM o, T& value) {
     fprintf(stderr, "some erlang_to not implemented\n");
-    return false;
-}
-
-ERL_NIF_TERM erlang_from_net(ErlNifEnv *env, ncnn::Net* obj) {
-    erlang_res<ncnn::Net*> * res;
-    if (alloc_resource(&res)) {
-        res->val = obj;
-    } else {
-        return erlang::nif::error(env, "no memory");
-    }
-
-    ERL_NIF_TERM ret = enif_make_resource(env, res);
-    enif_release_resource(res);
-    return ret;
-}
-
-ERL_NIF_TERM erlang_to_net(ErlNifEnv *env, ERL_NIF_TERM obj, ncnn::Net*& value) {
-    if (erlang::nif::check_nil(env, obj)) {
-        return false;
-    }
-
-    erlang_res<ncnn::Net *> * in_res;
-    if (enif_get_resource(env, obj, ncnn_net_type, (void **)&in_res)) {
-        if (in_res) {
-            value = in_res->val;
-            return true;
-        }
-    }
     return false;
 }
 
@@ -396,7 +354,7 @@ static ERL_NIF_TERM net_load_model(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     else return erlang::nif::atom(env, "nil");
 }
 
-#include "models/mobile_net_v3_ssdlite.hpp"
+#include "models/mobile_net.hpp"
 
 ERL_TYPE_DECLARE(Net, std::shared_ptr<ncnn::Net>, shared_ptr);
 
@@ -427,7 +385,9 @@ static ErlNifFunc nif_functions[] = {
     F(net_load_param, 1),
 
     // Models
-    F(mobile_net_v3_ssdlite_forward, 1)
+    // Models - MobileNet
+    F(mobile_net_v2_ssdlite_load, 1),
+    F(mobile_net_forward, 1),
 };
 
 ERL_NIF_INIT(ncnn_nif, nif_functions, on_load, on_reload, on_upgrade, NULL);

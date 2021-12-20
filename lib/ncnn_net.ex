@@ -21,8 +21,8 @@ defmodule Ncnn.Net do
     {:ok, mat, pred}
   end
 
-  def forward(self, data, cols, rows)
+  def forward(_self, data, cols, rows)
   when is_binary(data) and is_integer(cols) and is_integer(rows) do
-    :ncnn_nif.net_forward([net: self, data: data, cols: cols, rows: rows])
+    raise "not implemented"
   end
 end
