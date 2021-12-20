@@ -396,7 +396,7 @@ static ERL_NIF_TERM net_load_model(ErlNifEnv *env, int argc, const ERL_NIF_TERM 
     else return erlang::nif::atom(env, "nil");
 }
 
-#include "mobile_net_v3_ssdlite.hpp"
+#include "models/mobile_net_v3_ssdlite.hpp"
 
 ERL_TYPE_DECLARE(Net, std::shared_ptr<ncnn::Net>, shared_ptr);
 
