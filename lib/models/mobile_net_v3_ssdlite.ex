@@ -1,4 +1,4 @@
-defmodule Ncnn.MobileNetV3SsdLite do
+defmodule Ncnn.Models.MobileNetV3SsdLite do
   def load(param \\ "./mobilenetv3_ssdlite_voc.param", model \\ "./mobilenetv3_ssdlite_voc.bin") do
     {:ok, net} = Ncnn.Net.net()
     {:ok, net} = Ncnn.Net.load_param(net, param)
