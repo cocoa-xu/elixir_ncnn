@@ -2,6 +2,8 @@
 
 Only tested on Linux (Ubuntu 20.04 x86_64).
 
+Not maintained. ncnn is unstable and often crashes on arm64 host. Not sure about the reason.
+
 ## Current Status
 To test it, create a new `mix` library/applcation, and add `:evision` and `:elixir_ncnn` to deps.
 
